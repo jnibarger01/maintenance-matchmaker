@@ -19,21 +19,25 @@ return n === 0 ? "FREE" : `$${n.toFixed(2)}`;
 }
 
 function validateInputs() {
-const year = $("year").value.trim();
-const model = $("model").value.trim();
-const mileageRaw = $("mileage").value.trim();
-const mileage = parseInt(mileageRaw, 10);
-
-if (!year || !model || mileageRaw === "") {
-  alert("Please fill in all fields");
-  return null;
-}
-if (Number.isNaN(mileage) || mileage < 0 || mileage > 500000) {
-  alert("Please enter a valid mileage");
+// Keep year validation aligned with the HTML min/max input range.
+const validation = window.MatchmakerValidation?.validateVehicleInputs;
+if (typeof validation !== "function") {
+  alert("Validation error: missing validation helper.");
   return null;
 }
 
-return { year, model, mileage };
+const result = validation({
+  yearRaw: $("year").value,
+  modelRaw: $("model").value,
+  mileageRaw: $("mileage").value
+});
+
+if (result.error) {
+  alert(result.error);
+  return null;
+}
+
+return result.value;
 
 }
 
