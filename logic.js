@@ -19,8 +19,13 @@ return Object.keys(window.MAINTENANCE_SCHEDULE.intervals)
 }
 
 function findNextInterval(mileage) {
-const intervals = [5000, 15000, 30000, 45000, 60000, 90000, 100000, 120000];
-return intervals.find((i) => mileage < i) || Math.ceil(mileage / 5000) * 5000;
+const intervals = getIntervalsSorted();
+// Use schedule-defined intervals; beyond the highest, roll to the next base interval.
+const nextScheduled = intervals.find((interval) => mileage < interval);
+if (nextScheduled) return nextScheduled;
+
+const baseInterval = intervals[0];
+return Math.ceil((mileage + 1) / baseInterval) * baseInterval;
 }
 
 function makeServiceKey(service) {
