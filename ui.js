@@ -2,7 +2,7 @@
 // DOM wiring + rendering + clipboard export.
 // Depends on data.js + logic.js.
 
-(function () {
+const MatchmakerUI = (function () {
 "use strict";
 
 const state = {
@@ -101,9 +101,129 @@ summaryBar.classList.add("active");
 
 }
 
+function clearContainer(container) {
+while (container.firstChild) {
+  container.removeChild(container.firstChild);
+}
+}
+
+function createPriorityHeader(priority, label, count) {
+const header = document.createElement("div");
+header.className = "priority-header";
+
+const badge = document.createElement("span");
+badge.classList.add("priority-badge", priority);
+badge.textContent = label;
+
+const countText = document.createElement("span");
+countText.style.color = "#666";
+countText.style.fontSize = "0.9em";
+countText.textContent = `${count} ${count === 1 ? "service" : "services"}`;
+
+header.appendChild(badge);
+header.appendChild(countText);
+
+return header;
+}
+
+function createStatusDetails(service) {
+const details = document.createElement("div");
+details.className = "service-details";
+
+if (service.overdue) {
+  const overdue = document.createElement("span");
+  overdue.style.color = "#ff4757";
+  overdue.style.fontWeight = "600";
+  overdue.textContent = "OVERDUE";
+  details.appendChild(overdue);
+  details.appendChild(
+    document.createTextNode(` - Due at ${service.due.toLocaleString()} mi`)
+  );
+  return details;
+}
+
+details.textContent = `Due in ${service.milesUntil.toLocaleString()} mi (at ${service.due.toLocaleString()} mi)`;
+return details;
+}
+
+function createServiceItem(service) {
+// Build DOM nodes explicitly to avoid injecting untrusted data via innerHTML (XSS mitigation).
+const item = document.createElement("div");
+item.className = "service-item";
+item.dataset.service = JSON.stringify(service);
+
+const info = document.createElement("div");
+info.className = "service-info";
+
+const name = document.createElement("div");
+name.className = "service-name";
+name.textContent = service.service;
+
+const details = createStatusDetails(service);
+
+info.appendChild(name);
+info.appendChild(details);
+
+const price = document.createElement("div");
+price.className = "service-price";
+
+const amount = document.createElement("div");
+amount.className = "price-amount";
+amount.textContent = money(service.price || 0);
+
+const labor = document.createElement("div");
+labor.className = "labor-hours";
+labor.textContent = `${service.labor_hours}h labor`;
+
+price.appendChild(amount);
+price.appendChild(labor);
+
+const checkboxWrap = document.createElement("div");
+checkboxWrap.className = "service-checkbox";
+
+const checkbox = document.createElement("input");
+checkbox.type = "checkbox";
+checkbox.className = "service-toggle";
+checkboxWrap.appendChild(checkbox);
+
+item.appendChild(info);
+item.appendChild(price);
+item.appendChild(checkboxWrap);
+
+return item;
+}
+
+function createEmptyState() {
+const emptyState = document.createElement("div");
+emptyState.className = "empty-state";
+
+const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+icon.setAttribute("viewBox", "0 0 24 24");
+icon.setAttribute("fill", "currentColor");
+
+const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+path.setAttribute(
+  "d",
+  "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+);
+icon.appendChild(path);
+
+const title = document.createElement("h3");
+title.textContent = "All caught up!";
+
+const subtitle = document.createElement("p");
+subtitle.textContent = "No services due at this mileage";
+
+emptyState.appendChild(icon);
+emptyState.appendChild(title);
+emptyState.appendChild(subtitle);
+
+return emptyState;
+}
+
 function renderRecommendations(recommendations) {
 const container = $("recommendations-container");
-container.innerHTML = "";
+clearContainer(container);
 
 const priorityOrder = ["critical", "high", "medium", "low"];
 const priorityLabels = {
@@ -113,57 +233,27 @@ const priorityLabels = {
   low: "Low Priority"
 };
 
+let hasResults = false;
+
 for (const priority of priorityOrder) {
   const services = recommendations[priority] || [];
   if (services.length === 0) continue;
+  hasResults = true;
 
   const section = document.createElement("div");
   section.className = "priority-section";
 
-  const header = document.createElement("div");
-  header.className = "priority-header";
-  header.innerHTML =
-    `<span class="priority-badge ${priority}">${priorityLabels[priority]}</span>` +
-    `<span style="color:#666;font-size:0.9em;">${services.length} ${services.length === 1 ? "service" : "services"}</span>`;
-  section.appendChild(header);
+  section.appendChild(createPriorityHeader(priority, priorityLabels[priority], services.length));
 
   for (const service of services) {
-    const item = document.createElement("div");
-    item.className = "service-item";
-    item.dataset.service = JSON.stringify(service);
-
-    const statusText = service.overdue
-      ? `<span style="color:#ff4757;font-weight:600;">OVERDUE</span> - Due at ${service.due.toLocaleString()} mi`
-      : `Due in ${service.milesUntil.toLocaleString()} mi (at ${service.due.toLocaleString()} mi)`;
-
-    item.innerHTML =
-      `<div class="service-info">` +
-      `<div class="service-name">${service.service}</div>` +
-      `<div class="service-details">${statusText}</div>` +
-      `</div>` +
-      `<div class="service-price">` +
-      `<div class="price-amount">${money(service.price || 0)}</div>` +
-      `<div class="labor-hours">${service.labor_hours}h labor</div>` +
-      `</div>` +
-      `<div class="service-checkbox">` +
-      `<input type="checkbox" class="service-toggle">` +
-      `</div>`;
-
-    section.appendChild(item);
+    section.appendChild(createServiceItem(service));
   }
 
   container.appendChild(section);
 }
 
-if (container.innerHTML.trim() === "") {
-  container.innerHTML =
-    `<div class="empty-state">` +
-    `<svg viewBox="0 0 24 24" fill="currentColor">` +
-    `<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>` +
-    `</svg>` +
-    `<h3>All caught up!</h3>` +
-    `<p>No services due at this mileage</p>` +
-    `</div>`;
+if (!hasResults) {
+  container.appendChild(createEmptyState());
 }
 
 }
@@ -267,4 +357,17 @@ if (yearInput && window.innerWidth > 768) yearInput.focus();
 }
 
 document.addEventListener("DOMContentLoaded", init);
+
+return {
+  renderRecommendations,
+  createServiceItem,
+  createPriorityHeader,
+  createEmptyState,
+  createStatusDetails,
+  clearContainer
+};
 })();
+
+if (typeof module !== "undefined" && module.exports) {
+module.exports = MatchmakerUI;
+}
