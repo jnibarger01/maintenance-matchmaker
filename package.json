@@ -1,0 +1,17 @@
+{
+  "name": "maintenance-matchmaker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npm run lint && npm run format && vitest run",
+    "lint": "eslint .",
+    "format": "prettier --check .",
+    "format:write": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "vitest": "^1.6.0"
+  }
+}
