@@ -53,6 +53,6 @@ describe("MatchmakerLogic", () => {
     );
 
     expect(brakeInspection).toBeDefined();
-    expect(brakeInspection.interval).toBe(15000);
+    expect(brakeInspection.interval).toBe(5000);
   });
 });
