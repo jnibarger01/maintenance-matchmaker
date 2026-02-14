@@ -14,6 +14,26 @@ export default [
     }
   },
   {
+    files: ["ui.js"],
+    languageOptions: {
+      globals: {
+        alert: "readonly",
+        document: "readonly",
+        navigator: "readonly",
+        setTimeout: "readonly",
+        console: "readonly"
+      }
+    }
+  },
+  {
+    files: ["validation.js"],
+    languageOptions: {
+      globals: {
+        module: "readonly"
+      }
+    }
+  },
+  {
     files: ["tests/**/*.js"],
     languageOptions: {
       globals: {
@@ -21,7 +41,8 @@ export default [
         describe: "readonly",
         expect: "readonly",
         it: "readonly",
-        vi: "readonly"
+        vi: "readonly",
+        process: "readonly"
       }
     }
   }
