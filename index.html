@@ -195,15 +195,23 @@
       }
       .service-price {
         text-align: right;
+        min-width: 160px;
       }
       .price-amount {
         font-size: 1.4em;
         font-weight: 700;
         color: #2ed573;
       }
+      .price-editor {
+        margin-top: 8px;
+        width: 120px;
+        text-align: right;
+        padding: 8px 10px;
+      }
       .labor-hours {
         font-size: 0.85em;
         color: #666;
+        margin-top: 6px;
       }
       .service-checkbox input {
         width: 24px;
@@ -278,13 +286,7 @@
         <div class="input-section">
           <div class="form-group">
             <label for="year">Year</label>
-            <input
-              type="number"
-              id="year"
-              placeholder="2018"
-              min="1984"
-              max="2026"
-            />
+            <input type="number" id="year" placeholder="2018" min="1984" max="2026" />
           </div>
           <div class="form-group">
             <label for="model">Model</label>
@@ -308,9 +310,7 @@
           </div>
         </div>
 
-        <button class="btn" id="generate-btn">
-          🎯 Generate Recommendations
-        </button>
+        <button class="btn" id="generate-btn">🎯 Generate Recommendations</button>
       </div>
 
       <div id="results" class="results">
