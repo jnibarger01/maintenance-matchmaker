@@ -19,6 +19,7 @@ export default [
       globals: {
         alert: "readonly",
         document: "readonly",
+        localStorage: "readonly",
         navigator: "readonly",
         setTimeout: "readonly",
         console: "readonly"

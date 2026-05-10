@@ -5,10 +5,40 @@
 (function () {
   "use strict";
 
+  const PRICE_STORAGE_KEY = "maintenance-matchmaker-price-overrides";
+
   const state = {
     // Map<serviceKey, serviceObj>
-    selected: new Map()
+    selected: new Map(),
+    priceOverrides: loadPriceOverrides()
   };
+
+  function loadPriceOverrides() {
+    try {
+      const raw = localStorage.getItem(PRICE_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function savePriceOverrides() {
+    localStorage.setItem(
+      PRICE_STORAGE_KEY,
+      JSON.stringify(state.priceOverrides)
+    );
+  }
+
+  function getServicePrice(service) {
+    const key = window.MatchmakerLogic.makeServiceKey(service);
+    return state.priceOverrides[key] ?? service.price ?? 0;
+  }
+
+  function applyPriceOverride(service, value) {
+    const key = window.MatchmakerLogic.makeServiceKey(service);
+    state.priceOverrides[key] = value;
+    savePriceOverrides();
+  }
 
   function $(id) {
     return document.getElementById(id);
@@ -19,7 +49,6 @@
   }
 
   function validateInputs() {
-    // Keep year validation aligned with the HTML min/max input range.
     const validation = window.MatchmakerValidation?.validateVehicleInputs;
     if (typeof validation !== "function") {
       alert("Validation error: missing validation helper.");
@@ -70,6 +99,8 @@
     const serviceData = JSON.parse(item.dataset.service);
     const key = window.MatchmakerLogic.makeServiceKey(serviceData);
 
+    serviceData.price = getServicePrice(serviceData);
+
     if (checkbox.checked) {
       state.selected.set(key, serviceData);
       item.classList.add("selected");
@@ -81,6 +112,31 @@
     updateSummary();
   }
 
+  function handlePriceEdit(input) {
+    const item = input.closest(".service-item");
+    if (!item) return;
+
+    const serviceData = JSON.parse(item.dataset.service);
+    const parsed = Number.parseFloat(input.value);
+    const nextPrice = Number.isFinite(parsed) ? parsed : 0;
+
+    applyPriceOverride(serviceData, nextPrice);
+
+    serviceData.price = nextPrice;
+    item.dataset.service = JSON.stringify(serviceData);
+
+    const priceLabel = item.querySelector(".price-amount");
+    if (priceLabel) {
+      priceLabel.textContent = money(nextPrice);
+    }
+
+    const key = window.MatchmakerLogic.makeServiceKey(serviceData);
+    if (state.selected.has(key)) {
+      state.selected.set(key, serviceData);
+      updateSummary();
+    }
+  }
+
   function updateSummary() {
     const summaryBar = $("summary-bar");
     const services = Array.from(state.selected.values());
@@ -90,7 +146,11 @@
       return;
     }
 
-    const totalPrice = services.reduce((sum, s) => sum + (s.price || 0), 0);
+    const totalPrice = services.reduce(
+      (sum, s) => sum + getServicePrice(s),
+      0
+    );
+
     const totalHours = services.reduce(
       (sum, s) => sum + (s.labor_hours || 0),
       0
@@ -132,7 +192,14 @@
       for (const service of services) {
         const item = document.createElement("div");
         item.className = "service-item";
-        item.dataset.service = JSON.stringify(service);
+
+        const currentPrice = getServicePrice(service);
+        const hydratedService = {
+          ...service,
+          price: currentPrice
+        };
+
+        item.dataset.service = JSON.stringify(hydratedService);
 
         const statusText = service.overdue
           ? `<span style="color:#ff4757;font-weight:600;">OVERDUE</span> - Due at ${service.due.toLocaleString()} mi`
@@ -144,7 +211,8 @@
           `<div class="service-details">${statusText}</div>` +
           `</div>` +
           `<div class="service-price">` +
-          `<div class="price-amount">${money(service.price || 0)}</div>` +
+          `<div class="price-amount">${money(currentPrice)}</div>` +
+          `<input class="price-editor" type="number" min="0" step="0.01" value="${currentPrice.toFixed(2)}">` +
           `<div class="labor-hours">${service.labor_hours}h labor</div>` +
           `</div>` +
           `<div class="service-checkbox">` +
@@ -155,17 +223,6 @@
       }
 
       container.appendChild(section);
-    }
-
-    if (container.innerHTML.trim() === "") {
-      container.innerHTML =
-        `<div class="empty-state">` +
-        `<svg viewBox="0 0 24 24" fill="currentColor">` +
-        `<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>` +
-        `</svg>` +
-        `<h3>All caught up!</h3>` +
-        `<p>No services due at this mileage</p>` +
-        `</div>`;
     }
   }
 
@@ -191,12 +248,16 @@
       if (items.length === 0) return;
       text += `${priority.toUpperCase()} PRIORITY:\n`;
       items.forEach((s) => {
-        text += `  ☐ ${s.service} - ${money(s.price || 0)} (${s.labor_hours}h)\n`;
+        text += `  ☐ ${s.service} - ${money(getServicePrice(s))} (${s.labor_hours}h)\n`;
       });
       text += "\n";
     });
 
-    const totalPrice = services.reduce((sum, s) => sum + (s.price || 0), 0);
+    const totalPrice = services.reduce(
+      (sum, s) => sum + getServicePrice(s),
+      0
+    );
+
     const totalHours = services.reduce(
       (sum, s) => sum + (s.labor_hours || 0),
       0
@@ -236,6 +297,7 @@
       inputs.model,
       inputs.mileage
     );
+
     renderRecommendations(recommendations);
 
     $("results").classList.add("active");
@@ -245,18 +307,20 @@
   }
 
   function init() {
-    // Buttons
     $("generate-btn")?.addEventListener("click", generate);
     $("copy-btn")?.addEventListener("click", copyToClipboard);
     $("clear-btn")?.addEventListener("click", clearSelections);
 
-    // Single delegated listener (no duplicates on re-render)
     $("recommendations-container")?.addEventListener("change", (e) => {
-      if (e.target?.classList?.contains("service-toggle"))
+      if (e.target?.classList?.contains("service-toggle")) {
         toggleService(e.target);
+      }
+
+      if (e.target?.classList?.contains("price-editor")) {
+        handlePriceEdit(e.target);
+      }
     });
 
-    // Enter to generate
     document.querySelectorAll("input, select").forEach((el) => {
       el.addEventListener("keypress", (e) => {
         if (e.key === "Enter") {
@@ -266,7 +330,6 @@
       });
     });
 
-    // Nice-to-have focus on desktop
     const yearInput = $("year");
     if (yearInput && window.innerWidth > 768) yearInput.focus();
   }
