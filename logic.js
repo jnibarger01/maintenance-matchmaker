@@ -22,7 +22,6 @@
 
   function findNextInterval(mileage) {
     const intervals = getIntervalsSorted();
-    // Use schedule-defined intervals; beyond the highest, roll to the next base interval.
     const nextScheduled = intervals.find((interval) => mileage < interval);
     if (nextScheduled) return nextScheduled;
 
@@ -31,7 +30,6 @@
   }
 
   function makeServiceKey(service) {
-    // stable key per service item + interval
     return `${service.service}@@${service.interval}`;
   }
 
@@ -45,7 +43,6 @@
     const schedule = window.MAINTENANCE_SCHEDULE;
     const recommendations = { critical: [], high: [], medium: [], low: [] };
 
-    // base intervals
     const intervals = getIntervalsSorted();
     intervals.forEach((interval) => {
       if (currentMileage + lookAheadMiles < interval) return;
@@ -65,7 +62,6 @@
       });
     });
 
-    // model-specific
     const modelBlock = schedule.modelSpecific?.[model];
     if (modelBlock) {
       Object.keys(modelBlock).forEach((intervalKey) => {
@@ -87,16 +83,16 @@
       });
     }
 
-    // de-dupe by service name (keep earliest interval)
     Object.keys(recommendations).forEach((priority) => {
       const list = recommendations[priority];
       const map = new Map();
-      for (const s of list) {
-        if (!map.has(s.service)) map.set(s.service, s);
+      for (const service of list) {
+        if (!map.has(service.service)) map.set(service.service, service);
         else {
-          // keep whichever is earlier interval
-          const prev = map.get(s.service);
-          if (s.interval < prev.interval) map.set(s.service, s);
+          const previous = map.get(service.service);
+          if (service.interval < previous.interval) {
+            map.set(service.service, service);
+          }
         }
       }
       recommendations[priority] = Array.from(map.values()).sort(
@@ -107,9 +103,20 @@
     return recommendations;
   }
 
+  function flattenRecommendations(recommendations) {
+    const priorityOrder = ["critical", "high", "medium", "low"];
+    return priorityOrder.flatMap((priority) =>
+      (recommendations?.[priority] || []).map((service) => ({
+        ...service,
+        priority
+      }))
+    );
+  }
+
   window.MatchmakerLogic = {
     findNextInterval,
     calculateRecommendations,
+    flattenRecommendations,
     makeServiceKey
   };
 })();
