@@ -1,0 +1,287 @@
+/* Full-screen customer presentation and related oil-package module */
+.presentation-launch-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.presentation-launch-row .btn {
+  margin-top: 0;
+}
+
+.btn-dark {
+  background: #20242c;
+}
+
+.presentation-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: none;
+  background: #f4f5f7;
+  color: #20242c;
+}
+
+.presentation-overlay.active {
+  display: flex;
+  flex-direction: column;
+}
+
+.presentation-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 28px;
+  background: #fff;
+  border-bottom: 1px solid #e2e5e9;
+}
+
+.presentation-brand {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.presentation-vehicle {
+  color: #5c6470;
+  font-weight: 600;
+}
+
+.presentation-close {
+  width: auto;
+  margin: 0;
+  padding: 10px 18px;
+  background: #20242c;
+}
+
+.presentation-stage {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 34px;
+  overflow: auto;
+}
+
+.presentation-card {
+  width: min(1040px, 100%);
+  min-height: min(620px, calc(100vh - 180px));
+  display: grid;
+  grid-template-columns: 0.9fr 1.6fr;
+  gap: 48px;
+  align-items: center;
+  padding: 58px;
+  background: #fff;
+  border-radius: 28px;
+  box-shadow: 0 24px 80px rgba(25, 32, 44, 0.12);
+}
+
+.presentation-visual {
+  display: grid;
+  place-items: center;
+  min-height: 320px;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #f0f2f5, #ffffff);
+  font-size: 7rem;
+}
+
+.presentation-eyebrow {
+  color: #c8102e;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.presentation-copy h2 {
+  margin: 10px 0 14px;
+  font-size: clamp(2.1rem, 4vw, 4.2rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.presentation-benefit {
+  margin-bottom: 28px;
+  color: #47505c;
+  font-size: clamp(1.15rem, 2vw, 1.55rem);
+  line-height: 1.45;
+}
+
+.presentation-copy h3 {
+  margin: 22px 0 8px;
+  font-size: 1rem;
+}
+
+.presentation-copy p,
+.presentation-copy li {
+  color: #4e5661;
+  line-height: 1.55;
+}
+
+.presentation-copy ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  list-style: none;
+}
+
+.presentation-copy li {
+  padding: 11px 13px;
+  border-radius: 12px;
+  background: #f5f6f8;
+  font-weight: 600;
+}
+
+.source-badge {
+  display: inline-block;
+  margin-top: 26px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #fff0f3;
+  color: #9d0c27;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.presentation-controls {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 28px 22px;
+  background: #f4f5f7;
+}
+
+.presentation-controls .btn {
+  width: auto;
+  min-width: 140px;
+  margin: 0;
+}
+
+.presentation-progress {
+  text-align: center;
+  color: #5e6672;
+  font-weight: 700;
+}
+
+.oil-package-panel {
+  width: min(920px, 100%);
+  padding: 44px;
+  background: #fff;
+  border-radius: 28px;
+  box-shadow: 0 24px 80px rgba(25, 32, 44, 0.12);
+}
+
+.oil-package-panel h2 {
+  margin-bottom: 8px;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+}
+
+.oil-package-panel > p {
+  color: #5c6470;
+  margin-bottom: 28px;
+}
+
+.oil-controls,
+.oil-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.oil-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 24px;
+}
+
+.oil-metric {
+  padding: 22px;
+  border-radius: 18px;
+  background: #f3f5f8;
+}
+
+.oil-metric span {
+  display: block;
+  color: #66707d;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.oil-metric strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 2rem;
+}
+
+.oil-chart {
+  display: grid;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.oil-chart-row {
+  display: grid;
+  grid-template-columns: 72px 1fr 92px;
+  align-items: center;
+  gap: 12px;
+}
+
+.oil-chart-track {
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eceff3;
+}
+
+.oil-chart-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+}
+
+.presentation-disclaimer {
+  margin-top: 28px;
+  color: #707985;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .presentation-launch-row {
+    flex-direction: column;
+  }
+
+  .presentation-topbar {
+    align-items: flex-start;
+    padding: 14px 16px;
+  }
+
+  .presentation-stage {
+    padding: 14px;
+  }
+
+  .presentation-card {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 26px;
+  }
+
+  .presentation-visual {
+    min-height: 150px;
+    font-size: 4rem;
+  }
+
+  .presentation-controls {
+    grid-template-columns: 1fr 1fr;
+    padding: 12px 14px;
+  }
+
+  .presentation-progress {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .oil-controls,
+  .oil-metrics {
+    grid-template-columns: 1fr;
+  }
+}
