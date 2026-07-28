@@ -55,4 +55,32 @@ describe("MatchmakerLogic", () => {
     expect(brakeInspection).toBeDefined();
     expect(brakeInspection.interval).toBe(5000);
   });
+
+  it("flattens recommendations in customer presentation priority order", () => {
+    const flattened = logic.flattenRecommendations({
+      critical: [{ service: "Critical service" }],
+      high: [{ service: "High service" }],
+      medium: [{ service: "Medium service" }],
+      low: [{ service: "Low service" }]
+    });
+
+    expect(flattened.map((item) => item.service)).toEqual([
+      "Critical service",
+      "High service",
+      "Medium service",
+      "Low service"
+    ]);
+    expect(flattened.map((item) => item.priority)).toEqual([
+      "critical",
+      "high",
+      "medium",
+      "low"
+    ]);
+  });
+
+  it("ignores missing priority groups when flattening", () => {
+    expect(
+      logic.flattenRecommendations({ high: [{ service: "Only service" }] })
+    ).toEqual([{ service: "Only service", priority: "high" }]);
+  });
 });
