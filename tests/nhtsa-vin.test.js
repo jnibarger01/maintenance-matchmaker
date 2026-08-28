@@ -57,6 +57,15 @@ describe("NhtsaVin", () => {
     });
   });
 
+  it("auto-looks up only a new valid 17-character VIN", () => {
+    expect(vin.shouldAutoLookupVin("4t1b11hk5ju000000", "")).toBe(true);
+    expect(vin.shouldAutoLookupVin("4T1B11HK5JU00000", "")).toBe(false);
+    expect(vin.shouldAutoLookupVin("4T1B11HK5JU00000I", "")).toBe(false);
+    expect(
+      vin.shouldAutoLookupVin("4T1B11HK5JU000000", "4t1b11hk5ju000000")
+    ).toBe(false);
+  });
+
   it("parses the vehicle fields needed by Maintenance Matchmaker", () => {
     expect(vin.parseDecodeResponse(cleanDecode())).toEqual({
       value: {

@@ -1,6 +1,6 @@
 // nhtsa-vin.js
 // Optional VIN lookup using the free NHTSA vPIC API.
-// Auto-populates year/model for Toyota vehicles without changing the maintenance engine.
+// Auto-populates year/make/model for Toyota vehicles without changing the maintenance engine.
 
 (function () {
   "use strict";
@@ -8,6 +8,7 @@
   const API_BASE =
     "https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValuesExtended";
   const VIN_PATTERN = /^[A-HJ-NPR-Z0-9]{17}$/;
+  const AUTO_LOOKUP_DEBOUNCE_MS = 350;
 
   function normalizeVin(vinRaw) {
     return String(vinRaw || "")
@@ -34,6 +35,15 @@
     }
 
     return { value: vin };
+  }
+
+  function shouldAutoLookupVin(vinRaw, lastSuccessfulVin) {
+    const vin = normalizeVin(vinRaw);
+    return (
+      vin.length === 17 &&
+      VIN_PATTERN.test(vin) &&
+      vin !== normalizeVin(lastSuccessfulVin)
+    );
   }
 
   function parseDecodeResponse(payload) {
@@ -188,6 +198,24 @@
     return model;
   }
 
+  function ensureMakeInput(doc, inputSection) {
+    let makeInput = doc.getElementById("make");
+    if (makeInput) return makeInput;
+
+    const modelGroup = doc.getElementById("model")?.closest(".form-group");
+    if (!modelGroup) return null;
+
+    const makeGroup = doc.createElement("div");
+    makeGroup.className = "form-group";
+    makeGroup.innerHTML = `
+      <label for="make">Make</label>
+      <input type="text" id="make" placeholder="Decoded from VIN" readonly />
+    `;
+    inputSection.insertBefore(makeGroup, modelGroup);
+    makeInput = doc.getElementById("make");
+    return makeInput;
+  }
+
   function initVinLookup() {
     const doc = window.document;
     if (!doc || doc.getElementById("vin-lookup")) return;
@@ -219,7 +247,7 @@
         </div>
         <button class="btn" id="decode-vin-btn" type="button">Decode VIN</button>
       </div>
-      <div class="vin-help" id="vin-help">Uses the free NHTSA vPIC API. No API key required.</div>
+      <div class="vin-help" id="vin-help">Uses the free NHTSA vPIC API. A valid 17-character VIN decodes automatically.</div>
       <div class="vin-status" id="vin-status" aria-live="polite"></div>
     `;
 
@@ -229,7 +257,10 @@
     const decodeButton = doc.getElementById("decode-vin-btn");
     const status = doc.getElementById("vin-status");
     const yearInput = doc.getElementById("year");
+    const makeInput = ensureMakeInput(doc, inputSection);
     const modelSelect = doc.getElementById("model");
+    let autoLookupTimer = null;
+    let lastSuccessfulVin = "";
 
     function showStatus(message, type) {
       status.textContent = message;
@@ -237,11 +268,13 @@
     }
 
     async function runLookup() {
+      clearTimeout(autoLookupTimer);
       showStatus("", "");
       decodeButton.disabled = true;
       decodeButton.textContent = "Decoding…";
 
-      const result = await decodeVin(vinInput.value);
+      const requestedVin = normalizeVin(vinInput.value);
+      const result = await decodeVin(requestedVin);
 
       decodeButton.disabled = false;
       decodeButton.textContent = "Decode VIN";
@@ -252,9 +285,19 @@
       }
 
       const vehicle = result.value;
+      vinInput.value = vehicle.vin || requestedVin;
+      yearInput.value = String(vehicle.year);
+      if (makeInput) makeInput.value = vehicle.make;
+      ensureModelOption(modelSelect, vehicle.model);
+      lastSuccessfulVin = vinInput.value;
+
+      const extra = [vehicle.trim, vehicle.bodyClass]
+        .filter(Boolean)
+        .join(" • ");
+
       if (vehicle.make.toUpperCase() !== "TOYOTA") {
         showStatus(
-          `Decoded as ${vehicle.year} ${vehicle.make} ${vehicle.model}. Maintenance Matchmaker currently supports Toyota vehicles only.`,
+          `Decoded as ${vehicle.year} ${vehicle.make} ${normalizeModelName(vehicle.model)}${extra ? ` • ${extra}` : ""}. Maintenance Matchmaker currently supports Toyota vehicles only.`,
           "error"
         );
         return;
@@ -270,15 +313,8 @@
         return;
       }
 
-      vinInput.value = vehicle.vin || normalizeVin(vinInput.value);
-      yearInput.value = String(vehicle.year);
-      ensureModelOption(modelSelect, vehicle.model);
-
-      const extra = [vehicle.trim, vehicle.bodyClass]
-        .filter(Boolean)
-        .join(" • ");
       showStatus(
-        `✓ ${vehicle.year} Toyota ${normalizeModelName(vehicle.model)}${extra ? ` • ${extra}` : ""}`,
+        `✓ ${vehicle.year} ${vehicle.make} ${normalizeModelName(vehicle.model)}${extra ? ` • ${extra}` : ""}`,
         "success"
       );
     }
@@ -287,6 +323,11 @@
     vinInput.addEventListener("input", () => {
       vinInput.value = vinInput.value.toUpperCase();
       showStatus("", "");
+      clearTimeout(autoLookupTimer);
+
+      if (!shouldAutoLookupVin(vinInput.value, lastSuccessfulVin)) return;
+
+      autoLookupTimer = setTimeout(runLookup, AUTO_LOOKUP_DEBOUNCE_MS);
     });
     vinInput.addEventListener("keypress", (event) => {
       if (event.key !== "Enter") return;
@@ -298,8 +339,10 @@
 
   window.NhtsaVin = {
     API_BASE,
+    AUTO_LOOKUP_DEBOUNCE_MS,
     normalizeVin,
     validateVin,
+    shouldAutoLookupVin,
     parseDecodeResponse,
     decodeVin,
     normalizeModelName,
