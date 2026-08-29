@@ -57,6 +57,32 @@ describe("NhtsaVin", () => {
     });
   });
 
+  it("auto-looks up only a new valid 17-character VIN", () => {
+    expect(vin.shouldAutoLookupVin("4t1b11hk5ju000000", "")).toBe(true);
+    expect(vin.shouldAutoLookupVin("4T1B11HK5JU00000", "")).toBe(false);
+    expect(vin.shouldAutoLookupVin("4T1B11HK5JU00000I", "")).toBe(false);
+    expect(
+      vin.shouldAutoLookupVin("4T1B11HK5JU000000", "4t1b11hk5ju000000")
+    ).toBe(false);
+  });
+
+  it("accepts lookup results only while the requested VIN is still current", () => {
+    expect(
+      vin.isCurrentLookup("4t1b11hk5ju000000", "4T1B11HK5JU000000")
+    ).toBe(true);
+    expect(
+      vin.isCurrentLookup("4T1B11HK5JU000001", "4T1B11HK5JU000000")
+    ).toBe(false);
+    expect(vin.isCurrentLookup("", "4T1B11HK5JU000000")).toBe(false);
+  });
+
+  it("only treats Toyota decode results as supported for advisor autofill", () => {
+    expect(vin.isSupportedMake("TOYOTA")).toBe(true);
+    expect(vin.isSupportedMake(" toyota ")).toBe(true);
+    expect(vin.isSupportedMake("HONDA")).toBe(false);
+    expect(vin.isSupportedMake("")).toBe(false);
+  });
+
   it("parses the vehicle fields needed by Maintenance Matchmaker", () => {
     expect(vin.parseDecodeResponse(cleanDecode())).toEqual({
       value: {
