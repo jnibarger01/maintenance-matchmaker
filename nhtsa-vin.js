@@ -46,6 +46,14 @@
     );
   }
 
+  function isCurrentLookup(currentVinRaw, requestedVinRaw) {
+    return normalizeVin(currentVinRaw) === normalizeVin(requestedVinRaw);
+  }
+
+  function isSupportedMake(makeRaw) {
+    return String(makeRaw || "").trim().toUpperCase() === "TOYOTA";
+  }
+
   function parseDecodeResponse(payload) {
     const decoded = payload?.Results?.[0];
 
@@ -276,6 +284,8 @@
       const requestedVin = normalizeVin(vinInput.value);
       const result = await decodeVin(requestedVin);
 
+      if (!isCurrentLookup(vinInput.value, requestedVin)) return;
+
       decodeButton.disabled = false;
       decodeButton.textContent = "Decode VIN";
 
@@ -285,19 +295,14 @@
       }
 
       const vehicle = result.value;
-      vinInput.value = vehicle.vin || requestedVin;
-      yearInput.value = String(vehicle.year);
-      if (makeInput) makeInput.value = vehicle.make;
-      ensureModelOption(modelSelect, vehicle.model);
-      lastSuccessfulVin = vinInput.value;
-
       const extra = [vehicle.trim, vehicle.bodyClass]
         .filter(Boolean)
         .join(" • ");
 
-      if (vehicle.make.toUpperCase() !== "TOYOTA") {
+      if (!isSupportedMake(vehicle.make)) {
+        lastSuccessfulVin = requestedVin;
         showStatus(
-          `Decoded as ${vehicle.year} ${vehicle.make} ${normalizeModelName(vehicle.model)}${extra ? ` • ${extra}` : ""}. Maintenance Matchmaker currently supports Toyota vehicles only.`,
+          `Decoded as ${vehicle.year} ${vehicle.make} ${normalizeModelName(vehicle.model)}${extra ? ` • ${extra}` : ""}. Maintenance Matchmaker currently supports Toyota vehicles only; vehicle fields were not changed.`,
           "error"
         );
         return;
@@ -306,12 +311,19 @@
       const minYear = Number(yearInput.min || 0);
       const maxYear = Number(yearInput.max || 9999);
       if (vehicle.year < minYear || vehicle.year > maxYear) {
+        lastSuccessfulVin = requestedVin;
         showStatus(
-          `Decoded as ${vehicle.year} Toyota ${vehicle.model}, but this Matchmaker currently supports model years ${minYear}–${maxYear}.`,
+          `Decoded as ${vehicle.year} Toyota ${vehicle.model}, but this Matchmaker currently supports model years ${minYear}–${maxYear}. Vehicle fields were not changed.`,
           "error"
         );
         return;
       }
+
+      vinInput.value = vehicle.vin || requestedVin;
+      yearInput.value = String(vehicle.year);
+      if (makeInput) makeInput.value = vehicle.make;
+      ensureModelOption(modelSelect, vehicle.model);
+      lastSuccessfulVin = vinInput.value;
 
       showStatus(
         `✓ ${vehicle.year} ${vehicle.make} ${normalizeModelName(vehicle.model)}${extra ? ` • ${extra}` : ""}`,
@@ -343,6 +355,8 @@
     normalizeVin,
     validateVin,
     shouldAutoLookupVin,
+    isCurrentLookup,
+    isSupportedMake,
     parseDecodeResponse,
     decodeVin,
     normalizeModelName,
