@@ -22,7 +22,12 @@ export default [
     files: ["**/*.js"],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: "module",
+      // index.html loads every app file with a plain <script> tag, so they are
+      // classic scripts, not modules. Parsing them as modules would accept
+      // syntax the browser rejects, and would quietly disable
+      // no-implicit-globals, which ESLint only applies to scripts — exactly the
+      // rule that guards the window-namespace convention these files rely on.
+      sourceType: "script",
       globals: browserGlobals
     },
     rules: {
@@ -40,8 +45,10 @@ export default [
     }
   },
   {
+    // Tests run under vitest in Node and use ESM import syntax.
     files: ["tests/**/*.js"],
     languageOptions: {
+      sourceType: "module",
       globals: {
         ...browserGlobals,
         afterEach: "readonly",
@@ -56,7 +63,8 @@ export default [
     }
   },
   {
+    // This config is itself an ES module loaded by ESLint under Node.
     files: ["eslint.config.js"],
-    languageOptions: { globals: {} }
+    languageOptions: { sourceType: "module", globals: {} }
   }
 ];
