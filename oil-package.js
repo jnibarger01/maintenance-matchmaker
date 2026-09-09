@@ -18,7 +18,10 @@
   }
 
   function render() {
-    const packagePrice = Math.max(0, Number($("oil-package-price")?.value) || 0);
+    const packagePrice = Math.max(
+      0,
+      Number($("oil-package-price")?.value) || 0
+    );
     const visitPrice = Math.max(0, Number($("oil-visit-price")?.value) || 0);
     const costPerService = packagePrice / SERVICE_COUNT;
     const breakEven = visitPrice > 0 ? packagePrice / visitPrice : 0;
