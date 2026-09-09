@@ -3,14 +3,20 @@ import path from "node:path";
 import vm from "node:vm";
 import { describe, expect, it, vi } from "vitest";
 
-function loadVinModule() {
-  const context = { window: {} };
+function loadVinModule(overrides = {}) {
+  // A bare vm context has only ECMAScript built-ins. The module relies on the
+  // host-provided timer and abort globals a browser supplies, so inject them or
+  // the timeout path silently no-ops under test.
+  const context = {
+    window: {},
+    AbortController,
+    setTimeout,
+    clearTimeout,
+    ...overrides
+  };
   vm.createContext(context);
 
-  const code = readFileSync(
-    path.join(process.cwd(), "nhtsa-vin.js"),
-    "utf8"
-  );
+  const code = readFileSync(path.join(process.cwd(), "nhtsa-vin.js"), "utf8");
   vm.runInContext(code, context);
 
   return context.window.NhtsaVin;
@@ -67,12 +73,12 @@ describe("NhtsaVin", () => {
   });
 
   it("accepts lookup results only while the requested VIN is still current", () => {
-    expect(
-      vin.isCurrentLookup("4t1b11hk5ju000000", "4T1B11HK5JU000000")
-    ).toBe(true);
-    expect(
-      vin.isCurrentLookup("4T1B11HK5JU000001", "4T1B11HK5JU000000")
-    ).toBe(false);
+    expect(vin.isCurrentLookup("4t1b11hk5ju000000", "4T1B11HK5JU000000")).toBe(
+      true
+    );
+    expect(vin.isCurrentLookup("4T1B11HK5JU000001", "4T1B11HK5JU000000")).toBe(
+      false
+    );
     expect(vin.isCurrentLookup("", "4T1B11HK5JU000000")).toBe(false);
   });
 
@@ -126,8 +132,46 @@ describe("NhtsaVin", () => {
     });
     expect(fetchMock).toHaveBeenCalledWith(
       `${vin.API_BASE}/4T1B11HK5JU000000?format=json`,
-      { headers: { Accept: "application/json" } }
+      expect.objectContaining({ headers: { Accept: "application/json" } })
     );
+  });
+
+  it("passes an abort signal so a request can be cancelled", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => cleanDecode()
+    }));
+
+    await vin.decodeVin("4T1B11HK5JU000000", fetchMock);
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.signal).toBeDefined();
+    expect(init.signal.aborted).toBe(false);
+  });
+
+  it("reports a timeout instead of hanging when vPIC never responds", async () => {
+    // The module captures setTimeout from its host at load time, so collapse the
+    // deadline by swapping the global rather than by waiting the real 10s.
+    const immediate = (callback) => setTimeout(callback, 0);
+    const impatient = loadVinModule({ setTimeout: immediate });
+
+    // Settles only on abort; a real stalled connection never resolves otherwise.
+    const fetchMock = vi.fn(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init.signal.addEventListener("abort", () => {
+            const error = new Error("aborted");
+            error.name = "AbortError";
+            reject(error);
+          });
+        })
+    );
+
+    const result = await impatient.decodeVin("4T1B11HK5JU000000", fetchMock);
+
+    expect(result.error).toMatch(/did not respond within \d+ seconds/);
+    expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true);
   });
 
   it("normalizes common Toyota model naming variants", () => {
