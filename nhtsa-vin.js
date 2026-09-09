@@ -9,6 +9,7 @@
     "https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValuesExtended";
   const VIN_PATTERN = /^[A-HJ-NPR-Z0-9]{17}$/;
   const AUTO_LOOKUP_DEBOUNCE_MS = 350;
+  const LOOKUP_TIMEOUT_MS = 10000;
 
   function normalizeVin(vinRaw) {
     return String(vinRaw || "")
@@ -20,7 +21,8 @@
     const vin = normalizeVin(vinRaw);
 
     if (!vin) return { error: "Please enter a VIN." };
-    if (vin.length !== 17) return { error: "VIN must be exactly 17 characters." };
+    if (vin.length !== 17)
+      return { error: "VIN must be exactly 17 characters." };
     if (!VIN_PATTERN.test(vin)) {
       return {
         error:
@@ -44,7 +46,11 @@
   }
 
   function isSupportedMake(makeRaw) {
-    return String(makeRaw || "").trim().toUpperCase() === "TOYOTA";
+    return (
+      String(makeRaw || "")
+        .trim()
+        .toUpperCase() === "TOYOTA"
+    );
   }
 
   function parseDecodeResponse(payload) {
@@ -66,7 +72,9 @@
     const make = String(decoded.Make || "").trim();
     const model = String(decoded.Model || "").trim();
     if (!Number.isInteger(year) || !make || !model) {
-      return { error: "NHTSA did not return enough vehicle information for this VIN." };
+      return {
+        error: "NHTSA did not return enough vehicle information for this VIN."
+      };
     }
 
     return {
@@ -93,18 +101,38 @@
       return { error: "VIN lookup is unavailable in this browser." };
     }
 
+    // vPIC has no SLA. Without a deadline a stalled connection never settles,
+    // and the caller leaves the Decode button disabled forever.
+    const controller =
+      typeof AbortController === "function" ? new AbortController() : null;
+    const deadline = controller
+      ? setTimeout(() => controller.abort(), LOOKUP_TIMEOUT_MS)
+      : null;
+
     const url = `${API_BASE}/${encodeURIComponent(validation.value)}?format=json`;
     try {
-      const response = await request(url, { headers: { Accept: "application/json" } });
+      const response = await request(url, {
+        headers: { Accept: "application/json" },
+        signal: controller ? controller.signal : undefined
+      });
       if (!response.ok) {
-        return { error: `NHTSA VIN lookup failed with HTTP ${response.status}. Please try again.` };
+        return {
+          error: `NHTSA VIN lookup failed with HTTP ${response.status}. Please try again.`
+        };
       }
       return parseDecodeResponse(await response.json());
-    } catch {
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        return {
+          error: `NHTSA did not respond within ${Math.round(LOOKUP_TIMEOUT_MS / 1000)} seconds. Please try the VIN lookup again.`
+        };
+      }
       return {
         error:
           "Could not reach NHTSA. Check the network connection and try the VIN lookup again."
       };
+    } finally {
+      if (deadline !== null) clearTimeout(deadline);
     }
   }
 
@@ -184,7 +212,7 @@
   }
 
   function ensureMakeInput(doc, inputSection) {
-    let makeInput = doc.getElementById("make");
+    const makeInput = doc.getElementById("make");
     if (makeInput) return makeInput;
     const modelGroup = doc.getElementById("model")?.closest(".form-group");
     if (!modelGroup) return null;
@@ -265,7 +293,9 @@
       }
 
       const vehicle = result.value;
-      const extra = [vehicle.trim, vehicle.bodyClass].filter(Boolean).join(" • ");
+      const extra = [vehicle.trim, vehicle.bodyClass]
+        .filter(Boolean)
+        .join(" • ");
       if (!isSupportedMake(vehicle.make)) {
         lastSuccessfulVin = requestedVin;
         showStatus(
@@ -319,6 +349,7 @@
   window.NhtsaVin = {
     API_BASE,
     AUTO_LOOKUP_DEBOUNCE_MS,
+    LOOKUP_TIMEOUT_MS,
     normalizeVin,
     validateVin,
     shouldAutoLookupVin,

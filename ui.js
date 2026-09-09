@@ -146,10 +146,7 @@
       return;
     }
 
-    const totalPrice = services.reduce(
-      (sum, s) => sum + getServicePrice(s),
-      0
-    );
+    const totalPrice = services.reduce((sum, s) => sum + getServicePrice(s), 0);
 
     const totalHours = services.reduce(
       (sum, s) => sum + (s.labor_hours || 0),
@@ -253,10 +250,7 @@
       text += "\n";
     });
 
-    const totalPrice = services.reduce(
-      (sum, s) => sum + getServicePrice(s),
-      0
-    );
+    const totalPrice = services.reduce((sum, s) => sum + getServicePrice(s), 0);
 
     const totalHours = services.reduce(
       (sum, s) => sum + (s.labor_hours || 0),

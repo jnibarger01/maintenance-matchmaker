@@ -60,7 +60,8 @@
 
     $("presentation-progress").textContent = `${index + 1} of ${slides.length}`;
     $("presentation-prev").disabled = index === 0;
-    $("presentation-next").textContent = index === slides.length - 1 ? "Finish" : "Next →";
+    $("presentation-next").textContent =
+      index === slides.length - 1 ? "Finish" : "Next →";
   }
 
   function open(payload) {
@@ -76,7 +77,8 @@
     }
 
     index = 0;
-    $("presentation-vehicle").textContent = `${vehicle.year} Toyota ${vehicle.model} · ${vehicle.mileage.toLocaleString()} miles`;
+    $("presentation-vehicle").textContent =
+      `${vehicle.year} Toyota ${vehicle.model} · ${vehicle.mileage.toLocaleString()} miles`;
     $("presentation-overlay").classList.add("active");
     document.body.style.overflow = "hidden";
     render();
